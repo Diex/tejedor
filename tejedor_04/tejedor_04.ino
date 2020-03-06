@@ -35,7 +35,7 @@ unsigned long count = 0;
 unsigned long ptime = 0;
 unsigned long dtime = 0;
 
-unsigned int latchTime = 500; // us
+unsigned int latchTime = 400; // us
 
 int frame = 0;
 
@@ -75,14 +75,9 @@ void setup() {
   }
 
   fill_n(data, 96, UINT_MAX);
+  update();
 }
 
-void getRandomSeed()
-{
-  uint16_t seed = 0;
-  for (int i = 0; i < 1E3; i++) seed += seed ^ analogRead(random(6));
-  randomSeed(seed);
-}
 
 const int IDLE = -1;
 const int KNIT = 0;
@@ -96,23 +91,26 @@ void loop() {
   switch (state) {
     case IDLE:
       if(millis() > idleTime) state = KNIT;
+      Serial.println(F("idle"));
       break;
 
     case KNIT:
       if (ptime + dtime < millis()) {
-        dtime = random(10, 120);
+        dtime = random(0, 25);
         ptime = millis();
         animation();
       }
       break;
 
     case SHOW:
+      Serial.println(F("show"));
       if (millis() > showTime) state = ERASE;
 
       break;
 
     case ERASE:
       erase();
+      Serial.println(F("erase"));
       break;
 
 
@@ -122,6 +120,12 @@ void loop() {
 }
 
 
+void getRandomSeed()
+{
+  uint16_t seed = 0;
+  for (int i = 0; i < 1E3; i++) seed += seed ^ analogRead(random(6));
+  randomSeed(seed);
+}
 
 
 void erase() {
@@ -129,6 +133,7 @@ void erase() {
   for (int i = 0; i < 96; i++) {
     frameBuffer[i] = frameBuffer[i + 1];
   }
+
   frameBuffer[95] = 0;
   linesErased++;
   
@@ -137,60 +142,50 @@ void erase() {
     linesErased = 0;
     idleTime = millis() + 3E3;
   }
-
-
 }
 
-void animation() {
-  
-//  copy(frameBuffer, data, time);
-
-  if (frame == ANIM_START)  {
-    fill_n(frameBuffer, 96, 0);
-    update();
-  }
-
+void animation() {  
   renderLine();
-  
+//  renderLine2();
   if (frame == ANIM_END) {
     state = SHOW;
+    frame = 0;
+    update();
     showTime = random(4E3, 7E3) + millis();
   }
   
-  Serial.println(frame);
-  
-
-  
-  
+  Serial.println(frame); 
 }
 
 
 int knot = 0;
 int inc = 1;
-void renderLine() {
 
+void renderLine() {
   if(knot >= 0 && knot < 16){        
     knot += inc;
     int value = data[frame] >> knot & 1;
-    value <<= knot;
-    frameBuffer[frame] |= value;
+    frameBuffer[frame] |= value << knot;
   }else{
-//    knot = 0;
     inc *= -1;
     knot += inc;
     frame++ % 96;
   }
-  
-
-  
-    
-//    if(frame % 2 == 0) {
-//      copy(frameBuffer, data, frame);      
-//    }else{
-//      copy(frameBuffer, data, frame);  
-//    }
-  
 }
+
+
+void renderLine2() {
+  if(knot >= 0 && knot < 16){        
+    knot += inc;
+//    int value = data[frame] >> knot & 1;
+    frameBuffer[frame] = (frame % 2 == 0) ? data[frame] << knot : data[frame] << 16 - knot;
+  }else{
+    inc *= -1;
+    knot += inc;
+    frame++ % 96;
+  }
+}
+
 
 void copy(uint16_t fb[], uint16_t data[], uint16_t time) {
   //uint16_t t = time % 96;
@@ -203,7 +198,6 @@ void update() {
     data[i] = diex(iterations + i, 0);
   }
 }
-
 
 void fill_n(uint16_t arr[], int length, uint16_t value) {
   for (int i = 0 ; i < length; i++) {
