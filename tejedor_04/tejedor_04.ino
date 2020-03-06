@@ -33,16 +33,18 @@ unsigned long l;
 // http://unixwiz.net/techtips/reading-cdecl.html
 unsigned long count = 0;
 unsigned long ptime = 0;
-unsigned long dtime = 50;
+unsigned long dtime = 0;
 
 unsigned int latchTime = 500; // us
 
-int time = 0;
+int frame = 0;
 
 boolean canUpdate = true;
 uint16_t frameBuffer[96] = {};
 long showTime = 0;
-//int dupdate = 5E3;
+long idleTime = 0;
+
+int linesErased = 0;
 
 int ANIM_START = 0;
 int ANIM_END = 95;
@@ -93,70 +95,101 @@ void loop() {
 
   switch (state) {
     case IDLE:
-      state = KNIT;
+      if(millis() > idleTime) state = KNIT;
       break;
 
     case KNIT:
       if (ptime + dtime < millis()) {
         dtime = random(10, 120);
         ptime = millis();
-        animation(time++ % 96);
+        animation();
       }
       break;
 
     case SHOW:
-    if (millis() > showTime) state = KNIT;
-    
+      if (millis() > showTime) state = ERASE;
+
       break;
 
     case ERASE:
+      erase();
       break;
 
 
   }
 
   render();
-
-  //  if ( updateTime + dupdate < millis()) {
-  //    
-  //    canUpdate = true;
-  //
-  //  }
-  //
-  //
-  //  if (!canUpdate) {
-  //
-  //  } else {
-  //
-  //
-  //      if (time == 95) {
-  //        time = 0;
-  //        canUpdate = false;
-  //        updateTime = millis();
-  //        update();
-  //      }
-
-  //
-  //  }
+}
 
 
 
 
+void erase() {
+  
+  for (int i = 0; i < 96; i++) {
+    frameBuffer[i] = frameBuffer[i + 1];
+  }
+  frameBuffer[95] = 0;
+  linesErased++;
+  
+  if (linesErased > ANIM_END) {
+    state = IDLE;
+    linesErased = 0;
+    idleTime = millis() + 3E3;
+  }
 
 
 }
 
+void animation() {
+  
+//  copy(frameBuffer, data, time);
 
-void animation(uint16_t time) {
-  if (time == ANIM_START)  {
+  if (frame == ANIM_START)  {
     fill_n(frameBuffer, 96, 0);
     update();
   }
-  copy(frameBuffer, data, time);
-  if(time == ANIM_END){
+
+  renderLine();
+  
+  if (frame == ANIM_END) {
     state = SHOW;
     showTime = random(4E3, 7E3) + millis();
   }
+  
+  Serial.println(frame);
+  
+
+  
+  
+}
+
+
+int knot = 0;
+int inc = 1;
+void renderLine() {
+
+  if(knot >= 0 && knot < 16){        
+    knot += inc;
+    int value = data[frame] >> knot & 1;
+    value <<= knot;
+    frameBuffer[frame] |= value;
+  }else{
+//    knot = 0;
+    inc *= -1;
+    knot += inc;
+    frame++ % 96;
+  }
+  
+
+  
+    
+//    if(frame % 2 == 0) {
+//      copy(frameBuffer, data, frame);      
+//    }else{
+//      copy(frameBuffer, data, frame);  
+//    }
+  
 }
 
 void copy(uint16_t fb[], uint16_t data[], uint16_t time) {
