@@ -35,7 +35,7 @@ unsigned long count = 0;
 unsigned long ptime = 0;
 unsigned long dtime = 0;
 
-unsigned int latchTime = 400; // us
+unsigned int latchTime = 10; // us  no tiene sentido en este programa porque toda la secuencia toma mas tiempo...
 
 int frame = 0;
 
@@ -43,7 +43,7 @@ boolean canUpdate = true;
 uint16_t frameBuffer[96] = {};
 long showTime = 0;
 long idleTime = 0;
-
+int timeMult = 1;
 int linesErased = 0;
 
 int ANIM_START = 0;
@@ -96,7 +96,7 @@ void loop() {
 
     case KNIT:
       if (ptime + dtime < millis()) {
-        dtime = random(0, 25);
+        dtime = random(0, 25* timeMult);
         ptime = millis();
         animation();
       }
@@ -105,17 +105,13 @@ void loop() {
     case SHOW:
       Serial.println(F("show"));
       if (millis() > showTime) state = ERASE;
-
       break;
 
     case ERASE:
       erase();
       Serial.println(F("erase"));
       break;
-
-
   }
-
   render();
 }
 
@@ -127,24 +123,20 @@ void getRandomSeed()
   randomSeed(seed);
 }
 
-
-void erase() {
-  
+void erase() {  
   for (int i = 0; i < 96; i++) {
     frameBuffer[i] = frameBuffer[i + 1];
   }
-
   frameBuffer[95] = 0;
   linesErased++;
-  
   if (linesErased > ANIM_END) {
     state = IDLE;
     linesErased = 0;
-    idleTime = millis() + 3E3;
+    idleTime = millis() + 3E3 * timeMult;
   }
 }
 
-void animation() {  
+inline void animation() {  
   renderLine();
 //  renderLine2();
   if (frame == ANIM_END) {
@@ -161,7 +153,7 @@ void animation() {
 int knot = 0;
 int inc = 1;
 
-void renderLine() {
+inline void renderLine() {
   if(knot >= 0 && knot < 16){        
     knot += inc;
     int value = data[frame] >> knot & 1;
@@ -188,7 +180,6 @@ void renderLine2() {
 
 
 void copy(uint16_t fb[], uint16_t data[], uint16_t time) {
-  //uint16_t t = time % 96;
   fb[time] = data[time];
 }
 
@@ -206,7 +197,7 @@ void fill_n(uint16_t arr[], int length, uint16_t value) {
 }
 
 
-void render() {
+inline void render() {
   for (int column = 0 ; column < 16; column++) {
     for (int board = 2; board >= 0; board--) {
       //      SPI.transfer((1 << column));
