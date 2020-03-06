@@ -38,12 +38,14 @@ unsigned long dtime = 50;
 unsigned int latchTime = 500; // us
 
 int time = 0;
-long updateTime = 0;
+
 boolean canUpdate = true;
 uint16_t frameBuffer[96] = {};
-int dupdate = 5E3;
+long showTime = 0;
+//int dupdate = 5E3;
 
-
+int ANIM_START = 0;
+int ANIM_END = 95;
 
 void setup() {
 
@@ -62,7 +64,7 @@ void setup() {
   Serial.println(115200);
 
   getRandomSeed();
-  
+
   iterations = random(10E6);
 
 
@@ -80,37 +82,64 @@ void getRandomSeed()
   randomSeed(seed);
 }
 
+const int IDLE = -1;
+const int KNIT = 0;
+const int SHOW = 1;
+const int ERASE = 2;
+
+int state = IDLE;
 
 void loop() {
 
-  if ( updateTime + dupdate < millis()) {
-    dupdate = random(4E3, 7E3);
-    canUpdate = true;
+  switch (state) {
+    case IDLE:
+      state = KNIT;
+      break;
 
-  }
-
-
-  if (!canUpdate) {
-
-  } else {
-    if (ptime + dtime < millis()) {
-      
-      dtime = random(10, 120);
-      ptime = millis();
-      
-      animation(time++ % 96);
-      
-      if (time == 95) {
-        time = 0;
-        canUpdate = false;
-        updateTime = millis();
-        update();
+    case KNIT:
+      if (ptime + dtime < millis()) {
+        dtime = random(10, 120);
+        ptime = millis();
+        animation(time++ % 96);
       }
-    }
+      break;
+
+    case SHOW:
+    if (millis() > showTime) state = KNIT;
+    
+      break;
+
+    case ERASE:
+      break;
+
 
   }
 
   render();
+
+  //  if ( updateTime + dupdate < millis()) {
+  //    
+  //    canUpdate = true;
+  //
+  //  }
+  //
+  //
+  //  if (!canUpdate) {
+  //
+  //  } else {
+  //
+  //
+  //      if (time == 95) {
+  //        time = 0;
+  //        canUpdate = false;
+  //        updateTime = millis();
+  //        update();
+  //      }
+
+  //
+  //  }
+
+
 
 
 
@@ -118,9 +147,16 @@ void loop() {
 }
 
 
-void animation(uint16_t time ) {
-  if (time == 0)  fill_n(frameBuffer, 96, 0);
+void animation(uint16_t time) {
+  if (time == ANIM_START)  {
+    fill_n(frameBuffer, 96, 0);
+    update();
+  }
   copy(frameBuffer, data, time);
+  if(time == ANIM_END){
+    state = SHOW;
+    showTime = random(4E3, 7E3) + millis();
+  }
 }
 
 void copy(uint16_t fb[], uint16_t data[], uint16_t time) {
