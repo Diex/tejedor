@@ -94,11 +94,12 @@ void loop() {
 
   } else {
     if (ptime + dtime < millis()) {
+      
       dtime = random(10, 120);
       ptime = millis();
-      if (time == 0)  fill_n(frameBuffer, 96, 0);
-//      time = time + 1;
+      
       animation(time++ % 96);
+      
       if (time == 95) {
         time = 0;
         canUpdate = false;
@@ -118,6 +119,7 @@ void loop() {
 
 
 void animation(uint16_t time ) {
+  if (time == 0)  fill_n(frameBuffer, 96, 0);
   copy(frameBuffer, data, time);
 }
 
